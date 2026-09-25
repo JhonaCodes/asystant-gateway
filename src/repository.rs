@@ -58,7 +58,9 @@ impl PoolConfig {
             .map_err(|_| anyhow::anyhow!("migration failed"))?;
         Ok(())
     }
-    fn conn(&self) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>, AppError> {
+    pub(crate) fn conn(
+        &self,
+    ) -> Result<PooledConnection<ConnectionManager<SqliteConnection>>, AppError> {
         self.pool.get().map_err(|_| AppError::Internal)
     }
 }

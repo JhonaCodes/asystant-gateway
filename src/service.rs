@@ -5,7 +5,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use crate::{
-    config::Config,
+    config::{Config, ModelPolicy},
     error::AppError,
     model::{ExchangeOutput, Manifest, Session, TicketClaims, Turn},
     provider::{InferenceProvider, ProviderClient},
@@ -19,6 +19,17 @@ pub struct GatewayService {
     pub provider: Arc<dyn InferenceProvider>,
 }
 impl GatewayService {
+    /// Load persisted policy without ever replacing environment-owned credentials.
+    pub async fn effective_config(&self) -> Result<Config, AppError> {
+        let pool = self.pool.clone();
+        let mut config = self.config.clone();
+        tokio::task::spawn_blocking(move || {
+            crate::admin::repository::load_policy(&pool)?.apply(&mut config)?;
+            Ok(config)
+        })
+        .await
+        .map_err(|_| AppError::Internal)?
+    }
     pub async fn check_ready(&self) -> Result<(), AppError> {
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || pool.check_ready())
@@ -85,11 +96,20 @@ impl GatewayService {
     pub async fn register(
         &self,
         session: Session,
-        mut manifest: Manifest,
+        manifest: Manifest,
     ) -> Result<(String, Vec<String>), AppError> {
+        let (id, models, _) = self.register_with_policy(session, manifest).await?;
+        Ok((id, models))
+    }
+    /// Return metadata from the same policy snapshot used for the registration.
+    pub async fn register_with_policy(
+        &self,
+        session: Session,
+        mut manifest: Manifest,
+    ) -> Result<(String, Vec<String>, ModelPolicy), AppError> {
         Self::validate_manifest(&manifest)?;
-        let product = self
-            .config
+        let config = self.effective_config().await?;
+        let product = config
             .products
             .iter()
             .find(|p| p.issuer == session.issuer)
@@ -100,7 +120,7 @@ impl GatewayService {
         let requested = manifest.models;
         manifest.models = vec![policy.default_model.clone()];
         if policy.allow_selection {
-            for model in policy.models {
+            for model in policy.models.clone() {
                 if (requested.is_empty() || requested.contains(&model))
                     && !manifest.models.contains(&model)
                 {
@@ -109,7 +129,7 @@ impl GatewayService {
             }
         }
         let id = Uuid::new_v4().to_string();
-        let output = (id.clone(), manifest.models.clone());
+        let output = (id.clone(), manifest.models.clone(), policy);
         let pool = self.pool.clone();
         tokio::task::spawn_blocking(move || pool.register(&id, &session, &manifest))
             .await
@@ -205,15 +225,14 @@ impl GatewayService {
         if !manifest.models.contains(&turn.model) {
             return Err(AppError::Invalid);
         }
-        let model = self
-            .config
+        let config = self.effective_config().await?;
+        let model = config
             .models
             .iter()
             .find(|m| m.id == turn.model)
             .ok_or(AppError::Invalid)?
             .clone();
-        let product = self
-            .config
+        let product = config
             .products
             .iter()
             .find(|p| p.issuer == session.issuer)

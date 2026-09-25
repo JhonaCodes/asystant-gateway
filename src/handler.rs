@@ -32,14 +32,9 @@ pub async fn init(
     input: web::Json<Manifest>,
 ) -> Result<HttpResponse, AppError> {
     let session = session(&request, &service).await?;
-    let policy = service
-        .config
-        .products
-        .iter()
-        .find(|p| p.issuer == session.issuer)
-        .ok_or(AppError::Authentication)?
-        .model_policy(&session.tenant, &session.subject)?;
-    let (id, models) = service.register(session, input.into_inner()).await?;
+    let (id, models, policy) = service
+        .register_with_policy(session, input.into_inner())
+        .await?;
     Ok(HttpResponse::Ok()
         .insert_header(("Cache-Control", "no-store"))
         .json(json!({"id":id,"models":models,"default_model":policy.default_model,"allow_selection":policy.allow_selection})))
@@ -75,8 +70,8 @@ pub async fn models(
     service: web::Data<Arc<GatewayService>>,
 ) -> Result<HttpResponse, AppError> {
     let session = session(&request, &service).await?;
-    let policy = service
-        .config
+    let config = service.effective_config().await?;
+    let policy = config
         .products
         .iter()
         .find(|p| p.issuer == session.issuer)
@@ -88,14 +83,22 @@ pub async fn models(
 }
 pub fn routes(config: &mut web::ServiceConfig) {
     config
+        .configure(public_routes)
+        .service(web::scope("/v1").configure(api_routes));
+}
+pub fn public_routes(config: &mut web::ServiceConfig) {
+    config
         .route("/openapi.yaml", web::get().to(specification))
         .route("/health/live", web::get().to(live))
-        .route("/health/ready", web::get().to(ready))
-        .route("/v1/sessions/exchange", web::post().to(exchange))
-        .route("/v1/sessions/revoke", web::post().to(revoke))
-        .route("/v1/models", web::get().to(models))
-        .route("/v1/assistants/init", web::post().to(init))
-        .route("/v1/turns", web::post().to(turn));
+        .route("/health/ready", web::get().to(ready));
+}
+pub fn api_routes(config: &mut web::ServiceConfig) {
+    config
+        .route("/sessions/exchange", web::post().to(exchange))
+        .route("/sessions/revoke", web::post().to(revoke))
+        .route("/models", web::get().to(models))
+        .route("/assistants/init", web::post().to(init))
+        .route("/turns", web::post().to(turn));
 }
 
 pub async fn live() -> HttpResponse {

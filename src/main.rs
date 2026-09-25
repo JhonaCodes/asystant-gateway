@@ -43,6 +43,9 @@ async fn main() -> anyhow::Result<()> {
         pool,
         provider: Arc::new(ProviderClient::new()?),
     });
+    let admin = web::Data::new(asystant_gateway::admin::AdminState::new(
+        env::var("ASYSTANT_ADMIN_TOKEN").ok().as_deref(),
+    )?);
     let admission = web::Data::new(Admission::default());
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -54,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
         }
         App::new()
             .app_data(admission.clone())
+            .app_data(admin.clone())
             .wrap(from_fn(admission::enforce))
             .wrap(
                 DefaultHeaders::new()
@@ -64,14 +68,15 @@ async fn main() -> anyhow::Result<()> {
                         "default-src 'none'; frame-ancestors 'none'",
                     )),
             )
-            .wrap(cors)
             .app_data(
                 web::JsonConfig::default()
                     .limit(262144)
                     .error_handler(|_, _| asystant_gateway::error::AppError::Invalid.into()),
             )
             .app_data(web::Data::new(Arc::clone(&service)))
-            .configure(handler::routes)
+            .service(web::scope("/v1").wrap(cors).configure(handler::api_routes))
+            .configure(handler::public_routes)
+            .configure(asystant_gateway::admin::routes)
     })
     .shutdown_timeout(130)
     .bind(env::var("ASYSTANT_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into()))?

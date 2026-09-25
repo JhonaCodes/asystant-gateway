@@ -117,3 +117,39 @@ For a credential-free smoke test after building the image:
 docker build -t asystant-gateway:local .
 python3 scripts/check_container.py
 ```
+
+## Build locally and deploy a prebuilt image
+
+Use this flow when Dokploy should only pull an image instead of compiling Rust.
+From a clean `main` checkout synchronized with GitHub:
+
+```sh
+./scripts/deploy-local-image.sh
+```
+
+Docker Desktop/Engine must be running, Buildx must be available, and `gh` must
+be authenticated with GHCR `write:packages` permission. The script securely pipes
+the existing GitHub token to Docker login; it never embeds that token or runtime
+secrets in the image. It checks the branch/worktree/remote revision, builds
+`linux/amd64` locally, and pushes both `:prod` and a full-commit-SHA tag to
+`ghcr.io/jhonacodes/asystant-gateway`. Use `TARGET_PLATFORM=linux/arm64` only if
+the Dokploy host uses ARM64, or `TARGET_PLATFORM=linux/amd64,linux/arm64` for both.
+
+In Dokploy change the application provider/source to **Docker image** and use:
+
+```text
+ghcr.io/jhonacodes/asystant-gateway:prod
+```
+
+Keep the existing environment, `/data` volume, HTTPS domain and port `8787`.
+If GHCR requires authentication, configure registry `ghcr.io`, your GitHub
+username and a registry credential with `read:packages` in Dokploy's registry
+settings. Do not put registry credentials in application variables or source.
+Public repository visibility does not automatically guarantee public package
+visibility; the package owner can make the container public in GitHub settings.
+
+Click Deploy after each successful publication. This script publishes the image
+but does not trigger a Dokploy restart. Configure one replica and stop-first
+replacement so two processes do not overlap on the same SQLite volume.
+For rollback, use a previously published SHA tag after verifying schema
+compatibility, retaining the same volume. Never delete the volume to roll back.

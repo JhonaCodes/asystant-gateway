@@ -27,7 +27,17 @@ Set these runtime environment variables in Dokploy (not Docker build arguments):
 - `ASYSTANT_PRODUCTS`: JSON product issuer, signing secret, model policy and budgets.
 - `ASYSTANT_MODELS`: JSON model/provider mappings and conservative price ceilings.
 
-Use [.env.example](../.env.example) as a template. In individual Dokploy value
+Use [.env.example](../.env.example) as a template. It defaults to TurnosQR with
+`openai/gpt-oss-120b` as the sole allowed model. There is currently no admin panel;
+model policy is configured through these server variables and a restart.
+The example daily caps are USD 10 per tenant and USD 1 per user, not subscription
+charges. Adjust them to your intended budget. `client_models` and `budget_overrides`
+are optional advanced settings; do not copy fictitious customer IDs.
+
+Generate the product signing secret with `openssl rand -hex 32` and paste that
+same value into the product JSON `secret` and TurnosQR API
+`ASYSTANT_TICKET_SECRET`. This secret is separate from the OpenRouter API key.
+ In individual Dokploy value
 fields enter raw JSON without shell quote characters. Placeholder secrets must
 be replaced. Never commit actual secrets or SQLite files.
 

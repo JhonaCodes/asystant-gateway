@@ -618,6 +618,18 @@
         "properties": {
           "error": {
             "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "description": "Machine-readable reason when available; input_limit_exceeded for conservative input admission."
+          },
+          "estimated_input_upper_bound": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "max_input_tokens": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [

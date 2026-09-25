@@ -235,7 +235,10 @@ impl GatewayService {
             + manifest.tools.len() * 1024
             + 4096;
         if input > model.max_input_tokens as usize {
-            return Err(AppError::Invalid);
+            return Err(AppError::InputLimit {
+                estimated: input,
+                limit: model.max_input_tokens,
+            });
         }
         let reservation = model.reservation()?;
         let id = Self::hash(&json!([session.identity, turn.request_id]).to_string());

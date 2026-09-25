@@ -8,6 +8,8 @@ pub enum AppError {
     Authentication,
     #[error("invalid request")]
     Invalid,
+    #[error("input limit exceeded")]
+    InputLimit { estimated: usize, limit: u32 },
     #[error("budget exhausted")]
     Budget,
     #[error("duplicate request or ticket")]
@@ -23,7 +25,7 @@ impl ResponseError for AppError {
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Authentication => StatusCode::UNAUTHORIZED,
-            Self::Invalid => StatusCode::BAD_REQUEST,
+            Self::Invalid | Self::InputLimit { .. } => StatusCode::BAD_REQUEST,
             Self::Budget => StatusCode::PAYMENT_REQUIRED,
             Self::Conflict => StatusCode::CONFLICT,
             Self::Limited => StatusCode::TOO_MANY_REQUESTS,
@@ -36,6 +38,14 @@ impl ResponseError for AppError {
         response.insert_header(("Cache-Control", "no-store"));
         if matches!(self, Self::Limited) {
             response.insert_header(("Retry-After", "60"));
+        }
+        if let Self::InputLimit { estimated, limit } = self {
+            return response.json(json!({
+                "error": self.to_string(),
+                "code": "input_limit_exceeded",
+                "estimated_input_upper_bound": estimated,
+                "max_input_tokens": limit,
+            }));
         }
         response.json(json!({"error":self.to_string()}))
     }

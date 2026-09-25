@@ -167,6 +167,23 @@ async fn http_exchange_init_infer_replay_and_revoke() {
     assert_eq!(registration["default_model"], "test");
     assert_eq!(registration["allow_selection"], true);
     let turn = json!({"registration_id":registration["id"],"request_id":"turn-1","model":"test","messages":[{"role":"user","content":"Hello"}]});
+    // Oversized turns report safe diagnostics without consuming the request ID.
+    let mut oversized = turn.clone();
+    oversized["messages"][0]["content"] = json!("x".repeat(10_000));
+    let rejected = test::call_service(
+        &app,
+        test::TestRequest::post()
+            .uri("/v1/turns")
+            .insert_header(("Authorization", bearer.as_str()))
+            .set_json(oversized)
+            .to_request(),
+    )
+    .await;
+    assert_eq!(rejected.status(), StatusCode::BAD_REQUEST);
+    let reason: Value = test::read_body_json(rejected).await;
+    assert_eq!(reason["code"], "input_limit_exceeded");
+    assert_eq!(reason["max_input_tokens"], 10_000);
+    assert!(reason["estimated_input_upper_bound"].as_u64().unwrap() > 10_000);
     let held = service
         .inference_slots
         .clone()

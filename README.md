@@ -113,3 +113,22 @@ backups and rollout instructions. The Flutter SDK lives in
 Version 0.2.0 starts a new SQLite database. It does not import an existing
 PostgreSQL database; do not reset live budget or revocation history by swapping
 storage engines without a separately reviewed data migration.
+
+## Input admission limits
+
+`max_input_tokens` is checked against a conservative byte-based upper bound,
+not an exact tokenizer count. It includes the system prompts, serialized tool
+schemas, conversation and protocol overhead (including 1,024 per registered
+tool). Even a short user message can exceed a small configured limit.
+
+The example GPT OSS 120B policy uses 65,536 input and 2,048 output tokens.
+The TurnosQR 18-tool manifest with a short first message has a bound of about
+37,500, exceeding the previous 32,768 example. Existing deployments must change
+`ASYSTANT_MODELS` themselves and redeploy; updating the example does not alter
+runtime settings. Keep input plus output within the provider model context.
+
+An authenticated oversized turn returns HTTP 400 with `code` equal to
+`input_limit_exceeded`, `estimated_input_upper_bound` and `max_input_tokens`.
+It is rejected before provider inference or budget reservation. Raising this
+limit also increases the maximum budget reservation; daily spending limits
+remain enforced.

@@ -1,0 +1,19 @@
+services:
+  api:
+    build: .
+    image: asystant-gateway:local
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/asystant.db
+      ASYSTANT_BIND: 0.0.0.0:8787
+    volumes:
+      - asystant_data:/data
+    ports:
+      - "127.0.0.1:8787:8787"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 140s
+volumes:
+  asystant_data:

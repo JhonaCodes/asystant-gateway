@@ -1,0 +1,31 @@
+[package]
+name = "asystant_gateway"
+version = "0.2.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/JhonaCodes/asystant-gateway"
+description = "Session-backed inference gateway for embedded assistants with local tools"
+
+[dependencies]
+async-trait = "0.1"
+actix-web = { version = "4", default-features = false, features = ["macros"] }
+actix-cors = "0.7"
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+diesel = { version = "2.3", features = ["sqlite", "r2d2", "chrono"] }
+diesel_migrations = "2.3"
+libsqlite3-sys = { version = "0.35", features = ["bundled"] }
+futures-util = "0.3"
+jsonwebtoken = { version = "11", default-features = false, features = ["aws_lc_rs"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tempfile = "3"
+actix-rt = "2"

@@ -1,0 +1,937 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "asystant-ai Gateway API",
+    "version": "0.1.0",
+    "description": "Self-hosted reference API for Flutter assistants with local tools. Maximum request body: 256 KiB. Provider keys stay server-side. Use HTTPS and trusted ingress controls for public deployment.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8787",
+      "description": "Local development only; replace with your HTTPS deployment."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/sessions/exchange": {
+      "post": {
+        "operationId": "exchangeTicket",
+        "summary": "Exchange a signed ticket for a temporary credential",
+        "description": "Ticket claims: iss, aud, sub, tenant, sid, jti, iat, exp, session_exp. Only a trusted product backend may issue them. Tickets cannot choose an unregistered issuer or bypass persistent login revocation.",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Credential"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, manifest, transcript or model policy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked credential/ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Daily tenant or user budget exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Previously consumed ticket or duplicate inference ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission or concurrency limit reached; Retry-After: 60.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds to wait before a new attempt. Never automatically replay an uncertain write."
+              }
+            }
+          },
+          "502": {
+            "description": "Provider unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeInput"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/v1/sessions/revoke": {
+      "post": {
+        "operationId": "revokeLogin",
+        "summary": "Revoke all credentials and future tickets for this login",
+        "description": "A new host login must use a new sid.",
+        "responses": {
+          "400": {
+            "description": "Invalid input, manifest, transcript or model policy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked credential/ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Daily tenant or user budget exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Previously consumed ticket or duplicate inference ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission or concurrency limit reached; Retry-After: 60.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds to wait before a new attempt. Never automatically replay an uncertain write."
+              }
+            }
+          },
+          "502": {
+            "description": "Provider unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Login revoked."
+          }
+        }
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "operationId": "getModelPolicy",
+        "summary": "Read the effective model policy",
+        "description": "Policy derives from authenticated product, tenant and user; no tenant query parameter is accepted.",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, manifest, transcript or model policy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked credential/ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Daily tenant or user budget exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Previously consumed ticket or duplicate inference ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission or concurrency limit reached; Retry-After: 60.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds to wait before a new attempt. Never automatically replay an uncertain write."
+              }
+            }
+          },
+          "502": {
+            "description": "Provider unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assistants/init": {
+      "post": {
+        "operationId": "registerAssistant",
+        "summary": "Register local tool schemas and prompts",
+        "description": "Registration belongs to the complete login identity and lasts 24 hours. Server-assigned default model overrides stale client preferences.",
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Registration"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input, manifest, transcript or model policy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked credential/ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Daily tenant or user budget exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Previously consumed ticket or duplicate inference ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission or concurrency limit reached; Retry-After: 60.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds to wait before a new attempt. Never automatically replay an uncertain write."
+              }
+            }
+          },
+          "502": {
+            "description": "Provider unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Manifest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/turns": {
+      "post": {
+        "operationId": "inferTurn",
+        "summary": "Request one inference with streaming events",
+        "description": "Reserves budget before provider access. Proposed tools execute in the app after local validation/permission. Unknown usage retains a pending reservation; disconnect does not refund it.",
+        "responses": {
+          "200": {
+            "description": "SSE stream. Each frame is data: <JSON> followed by a blank line. No automatic replay.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "data: {\"type\":\"text_delta\",\"text\":\"Hello\"}\n\ndata: {\"type\":\"completed\",\"message\":{\"role\":\"assistant\",\"content\":\"Hello\",\"calls\":[],\"call_id\":\"\"}}\n\n"
+              }
+            },
+            "x-event-schema": {
+              "$ref": "#/components/schemas/StreamEvent"
+            }
+          },
+          "400": {
+            "description": "Invalid input, manifest, transcript or model policy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked credential/ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Daily tenant or user budget exhausted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Previously consumed ticket or duplicate inference ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Admission or concurrency limit reached; Retry-After: 60.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Seconds to wait before a new attempt. Never automatically replay an uncertain write."
+              }
+            }
+          },
+          "502": {
+            "description": "Provider unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Turn"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "summary": "Check process liveness",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "summary": "Check database and migrated schema",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "Healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service or database unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/openapi.yaml": {
+      "get": {
+        "operationId": "getSpecification",
+        "summary": "Read this public API specification",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 document.",
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque credential from session exchange; this is not a provider API key."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "ExchangeInput": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "maxLength": 8192,
+            "description": "Single-use HS256 JWT from the authenticated product backend; audience asystant-gateway, lifetime at most 120 seconds."
+          }
+        },
+        "required": [
+          "ticket"
+        ],
+        "additionalProperties": false
+      },
+      "Credential": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Opaque bearer credential. Store only in application memory."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "ToolSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_]{1,64}$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "JSON Schema with type object. The SDK validates supported scalar fields before local execution.",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "parameters"
+        ],
+        "additionalProperties": false
+      },
+      "Manifest": {
+        "type": "object",
+        "properties": {
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolSchema"
+            },
+            "maxItems": 64
+          },
+          "prompts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32,
+            "description": "Empty array delegates model catalog to server policy."
+          }
+        },
+        "required": [
+          "tools",
+          "prompts",
+          "models"
+        ],
+        "additionalProperties": false,
+        "description": "Serialized size at most 64000 bytes. No application tool implementations are uploaded."
+      },
+      "ModelPolicy": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_model": {
+            "type": "string"
+          },
+          "allow_selection": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "models",
+          "default_model",
+          "allow_selection"
+        ],
+        "additionalProperties": false
+      },
+      "Registration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_model": {
+            "type": "string"
+          },
+          "allow_selection": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "models",
+          "default_model",
+          "allow_selection"
+        ],
+        "additionalProperties": false
+      },
+      "ToolCall": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "arguments"
+        ],
+        "additionalProperties": false
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant",
+              "tool"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ToolCall"
+            },
+            "default": []
+          },
+          "call_id": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "additionalProperties": false,
+        "description": "Assistant calls must each be followed by a tool result before the next inference. System prompts are registered separately."
+      },
+      "Turn": {
+        "type": "object",
+        "properties": {
+          "registration_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "model": {
+            "type": "string"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "minItems": 1,
+            "maxItems": 256
+          }
+        },
+        "required": [
+          "registration_id",
+          "request_id",
+          "model",
+          "messages"
+        ],
+        "additionalProperties": false,
+        "description": "Request ID is unique per login identity/inference. Reuse is rejected, never replayed."
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "alive",
+              "ready"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "StreamEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "text_delta"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "completed"
+              },
+              "message": {
+                "$ref": "#/components/schemas/Message"
+              }
+            },
+            "required": [
+              "type",
+              "message"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "failed"
+              },
+              "failure": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "const": "unavailable"
+                  },
+                  "detail": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "detail"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "type",
+              "failure"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "description": "Each SSE data line contains one JSON event. Once HTTP streaming starts, errors arrive as failed events. A truncated connection is an uncertain outcome, not a safe retry signal."
+      }
+    }
+  }
+}

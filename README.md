@@ -132,3 +132,16 @@ An authenticated oversized turn returns HTTP 400 with `code` equal to
 It is rejected before provider inference or budget reservation. Raising this
 limit also increases the maximum budget reservation; daily spending limits
 remain enforced.
+
+## Embedded administration panel
+
+Enable `/admin` with a separate `ASYSTANT_ADMIN_TOKEN` (generate with
+`openssl rand -hex 32`) and use HTTPS. The panel configures product/customer
+model assignments, budgets and model input/output limits in the same SQLite
+volume. Its paid connection test exercises the normal inference and accounting
+pipeline without executing application tools. API keys and product signing
+secrets remain environment-only. No additional service is required.
+
+See [admin setup and protections](docs/admin-panel.md),
+[desktop preview](docs/admin-panel-desktop.png) and
+[mobile preview](docs/admin-panel-mobile.png). Previews use fixture data.

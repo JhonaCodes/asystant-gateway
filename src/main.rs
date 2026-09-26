@@ -1,5 +1,4 @@
 use std::{env, sync::Arc};
-use actix_cors::Cors;
 use actix_web::{
     App, HttpServer, web,
     middleware::{DefaultHeaders, from_fn},
@@ -8,6 +7,7 @@ use asystant_gateway::{
     admission::{self, Admission},
     config::Config,
     handler,
+    origins::{self, AllowedOrigins},
     provider::ProviderClient,
     repository::PoolConfig,
     service::GatewayService,
@@ -42,19 +42,15 @@ async fn main() -> anyhow::Result<()> {
         config: config.clone(),
         pool,
         provider: Arc::new(ProviderClient::new()?),
+        origins: AllowedOrigins::default(),
     });
+    service.load_origins().await;
     let admin = web::Data::new(asystant_gateway::admin::AdminState::new(
         env::var("ASYSTANT_ADMIN_TOKEN").ok().as_deref(),
     )?);
     let admission = web::Data::new(Admission::default());
     HttpServer::new(move || {
-        let mut cors = Cors::default()
-            .allowed_methods(vec!["GET", "POST"])
-            .allowed_headers(vec!["Authorization", "Content-Type"])
-            .max_age(600);
-        for origin in &config.origins {
-            cors = cors.allowed_origin(origin)
-        }
+        let cors = origins::cors(service.origins.clone());
         App::new()
             .app_data(admission.clone())
             .app_data(admin.clone())

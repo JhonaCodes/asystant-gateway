@@ -27,6 +27,7 @@ async fn client_assignment_overrides_requested_model_and_is_scoped_to_tenant() {
         config,
         pool,
         provider: Arc::new(ProviderClient::new().unwrap()),
+        origins: asystant_gateway::origins::AllowedOrigins::default(),
     };
     let session = Session {
         token_hash: "unused".into(),

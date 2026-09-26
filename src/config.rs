@@ -1,6 +1,9 @@
 use std::{collections::HashSet, env};
 use serde::{Deserialize, Serialize};
-use crate::error::AppError;
+use crate::{
+    error::AppError,
+    origins::{self, MAX_ORIGINS},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BudgetOverride {
@@ -192,12 +195,14 @@ impl Config {
         let config = Self {
             products: serde_json::from_str(&env::var("ASYSTANT_PRODUCTS")?)?,
             models: serde_json::from_str(&env::var("ASYSTANT_MODELS")?)?,
+            // Only the initial list: once administration saves the policy, the
+            // origins managed there replace this value.
             origins: env::var("ASYSTANT_ORIGINS")
                 .unwrap_or_default()
                 .split(',')
-                .filter(|s| !s.is_empty())
-                .map(str::to_owned)
-                .collect(),
+                .filter(|s| !s.trim().is_empty())
+                .map(origins::normalize)
+                .collect::<Result<_, _>>()?,
         };
         config.validate()?;
         for model in &config.models {
@@ -217,6 +222,15 @@ impl Config {
             if !ids.insert(&model.id) {
                 return Err(AppError::Invalid);
             }
+        }
+        if self.origins.len() > MAX_ORIGINS
+            || self.origins.iter().collect::<HashSet<_>>().len() != self.origins.len()
+            || self
+                .origins
+                .iter()
+                .any(|o| origins::normalize(o).ok().as_deref() != Some(o.as_str()))
+        {
+            return Err(AppError::Invalid);
         }
         let mut issuers = HashSet::new();
         for p in &self.products {

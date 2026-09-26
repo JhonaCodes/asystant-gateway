@@ -151,7 +151,25 @@ pub fn dashboard(config: &Config, csrf: &str) -> String {
             )
         ));
     }
-    content.push_str("</div><footer>SQLite stores operational policies. API keys and signing secrets remain in environment variables.</footer>");
+    content.push_str("</div><h2>Allowed origins</h2><aside>Websites and apps whose browsers may call this gateway, written as scheme and host, for example https://app.turnosqr.com. Changes apply at once. Plain http is only accepted for localhost.</aside><section class=\"card\">");
+    if config.origins.is_empty() {
+        content.push_str("<p>No origins yet: browsers cannot call the gateway.</p>");
+    }
+    for origin in &config.origins {
+        content.push_str(&format!(
+            "<form class=\"assignment\" method=\"post\" action=\"/admin/policy\">{}{}{}<strong>{}</strong><button class=\"secondary\">Remove</button></form>",
+            hidden("csrf", csrf),
+            hidden("kind", "origin_remove"),
+            hidden("origin", origin),
+            escape(origin),
+        ));
+    }
+    content.push_str(&format!(
+        "<form method=\"post\" action=\"/admin/policy\">{}{}<label>New origin<input name=\"origin\" required maxlength=\"200\" placeholder=\"https://app.example.com\"></label><button>Add origin</button></form></section>",
+        hidden("csrf", csrf),
+        hidden("kind", "origin_add"),
+    ));
+    content.push_str("<footer>SQLite stores operational policies. API keys and signing secrets remain in environment variables.</footer>");
     page(&content)
 }
 

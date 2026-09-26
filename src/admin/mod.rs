@@ -196,6 +196,7 @@ async fn save(
     tokio::task::spawn_blocking(move || repository::update_policy(&pool, config, &edit))
         .await
         .map_err(|_| AppError::Internal)??;
+    service.refresh_origins().await?;
     Ok(redirect())
 }
 async fn logout(

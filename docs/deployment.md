@@ -23,13 +23,16 @@ Set these runtime environment variables in Dokploy (not Docker build arguments):
 - `DATABASE_PATH=/data/asystant.db`
 - `ASYSTANT_BIND=0.0.0.0:8787`
 - `OPENROUTER_API_KEY`: your provider key, stored as a secret.
-- `ASYSTANT_ORIGINS`: comma-separated exact browser origins, e.g. `https://app.turnosqr.com`.
+- `ASYSTANT_ORIGINS` (optional): initial comma-separated browser origins, e.g.
+  `https://app.turnosqr.com`. Manage them afterwards under **Allowed origins** in
+  the admin panel, where several can be added without a restart; see
+  [admin-panel.md](admin-panel.md#allowed-origins).
 - `ASYSTANT_PRODUCTS`: JSON product issuer, signing secret, model policy and budgets.
 - `ASYSTANT_MODELS`: JSON model/provider mappings and conservative price ceilings.
 
 Use [.env.example](../.env.example) as a template. It defaults to TurnosQR with
-`openai/gpt-oss-120b` as the sole allowed model. There is currently no admin panel;
-model policy is configured through these server variables and a restart.
+`openai/gpt-oss-120b` as the sole allowed model. Model policy and allowed origins
+can then be changed without a restart in the [admin panel](admin-panel.md).
 The example daily caps are USD 10 per tenant and USD 1 per user, not subscription
 charges. Adjust them to your intended budget. `client_models` and `budget_overrides`
 are optional advanced settings; do not copy fictitious customer IDs.

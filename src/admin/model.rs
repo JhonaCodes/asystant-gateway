@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config::{BudgetOverride, ClientModels, Config},
     error::AppError,
+    origins::{self, MAX_ORIGINS},
 };
 
 /// Only nonsecret operational settings are persisted or rendered in administration.
@@ -9,6 +10,10 @@ use crate::{
 pub struct Policy {
     pub products: Vec<ProductPolicy>,
     pub models: Vec<ModelLimits>,
+    /// Browser origins allowed to call the API. Absent in policies saved before
+    /// origins were managed here; the environment's initial list applies then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origins: Option<Vec<String>>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductPolicy {
@@ -55,9 +60,13 @@ impl Policy {
                     max_output_tokens: m.max_output_tokens,
                 })
                 .collect(),
+            origins: Some(config.origins.clone()),
         }
     }
     pub fn apply(&self, config: &mut Config) -> Result<(), AppError> {
+        if let Some(origins) = &self.origins {
+            config.origins = origins.clone();
+        }
         for policy in &self.products {
             if let Some(p) = config
                 .products
@@ -99,10 +108,23 @@ pub struct EditPolicy {
     pub max_input_tokens: u32,
     #[serde(default)]
     pub max_output_tokens: u32,
+    #[serde(default)]
+    pub origin: String,
 }
 impl EditPolicy {
     pub fn apply(&self, config: &mut Config) -> Result<(), AppError> {
-        if self.kind == "model" {
+        if self.kind == "origin_add" {
+            let origin = origins::normalize(&self.origin)?;
+            if !config.origins.contains(&origin) {
+                if config.origins.len() >= MAX_ORIGINS {
+                    return Err(AppError::Invalid);
+                }
+                config.origins.push(origin);
+            }
+        } else if self.kind == "origin_remove" {
+            let origin = origins::normalize(&self.origin)?;
+            config.origins.retain(|o| *o != origin);
+        } else if self.kind == "model" {
             let m = config
                 .models
                 .iter_mut()

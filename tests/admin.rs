@@ -3,6 +3,7 @@ use actix_web::{App, http::StatusCode, test, web};
 use asystant_gateway::{
     admin::{self, AdminState, model::EditPolicy, repository::update_policy},
     config::{Config, ModelConfig, Product, Provider},
+    origins::{self, AllowedOrigins},
     provider::InferenceProvider,
     repository::PoolConfig,
     service::GatewayService,
@@ -66,6 +67,7 @@ fn service(pool: PoolConfig) -> Arc<GatewayService> {
         config: config(),
         pool,
         provider: Arc::new(LocalProvider),
+        origins: AllowedOrigins::default(),
     })
 }
 fn csrf(body: &str) -> String {
@@ -300,6 +302,7 @@ async fn invalid_policy_is_atomic_and_live_limits_change() {
         daily_user_micros: 0,
         max_input_tokens: 65536,
         max_output_tokens: 1024,
+        origin: String::new(),
     };
     update_policy(&pool, config.clone(), &edit).unwrap();
     assert_eq!(
@@ -360,6 +363,7 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
         daily_user_micros: 0,
         max_input_tokens: 1,
         max_output_tokens: 1024,
+        origin: String::new(),
     };
     update_policy(&pool, config(), &edit).unwrap();
     assert!(matches!(
@@ -384,4 +388,188 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
         svc.start_turn(session, turn).await,
         Err(asystant_gateway::error::AppError::Invalid)
     ));
+}
+
+/// Signs in and yields the session cookie and the dashboard's CSRF token.
+macro_rules! sign_in {
+    ($app:expr) => {{
+        let login =
+            test::call_service($app, test::TestRequest::get().uri("/admin").to_request()).await;
+        let login_cookie = login.response().cookies().next().unwrap().into_owned();
+        let login_body = String::from_utf8(test::read_body(login).await.to_vec()).unwrap();
+        let signed = test::call_service(
+            $app,
+            test::TestRequest::post()
+                .uri("/admin/login")
+                .cookie(login_cookie)
+                .set_form([
+                    ("csrf", csrf(&login_body)),
+                    ("token", "admin-token-random-at-least-32-bytes-long".into()),
+                ])
+                .to_request(),
+        )
+        .await;
+        let session = signed
+            .response()
+            .cookies()
+            .find(|c| c.name() == "__Host-asystant_admin")
+            .unwrap()
+            .into_owned();
+        let dashboard = test::call_service(
+            $app,
+            test::TestRequest::get()
+                .uri("/admin")
+                .cookie(session.clone())
+                .to_request(),
+        )
+        .await;
+        let body = String::from_utf8(test::read_body(dashboard).await.to_vec()).unwrap();
+        (session, csrf(&body))
+    }};
+}
+
+/// Whether a browser at the origin may call the public API: the CORS
+/// preflight answers with that exact origin.
+macro_rules! browser_allowed {
+    ($app:expr, $origin:expr) => {{
+        let origin: &str = $origin;
+        let preflight = test::TestRequest::default()
+            .method(actix_web::http::Method::OPTIONS)
+            .uri("/v1/turn")
+            .insert_header(("Origin", origin))
+            .insert_header(("Access-Control-Request-Method", "POST"))
+            .to_request();
+        match test::try_call_service($app, preflight).await {
+            Ok(response) => response
+                .headers()
+                .get("access-control-allow-origin")
+                .is_some_and(|value| value == origin),
+            Err(_) => false,
+        }
+    }};
+}
+
+/// A gateway whose environment already sets ASYSTANT_ORIGINS, as deployments do.
+fn seeded_service(pool: PoolConfig) -> Arc<GatewayService> {
+    let mut seeded = config();
+    seeded.origins = vec!["https://app.turnosqr.com".into()];
+    Arc::new(GatewayService {
+        inference_slots: Arc::new(tokio::sync::Semaphore::new(1)),
+        config: seeded,
+        pool,
+        provider: Arc::new(LocalProvider),
+        origins: AllowedOrigins::default(),
+    })
+}
+
+/// `--serve` on a schema not migrated yet must stay up (readiness reports it):
+/// the environment's origins apply until the policy can be read.
+#[actix_rt::test]
+async fn origins_start_from_the_environment_when_the_schema_is_not_migrated() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("unmigrated.db");
+    let svc = seeded_service(PoolConfig::connect(path.to_str().unwrap()).unwrap());
+    svc.load_origins().await;
+    assert!(svc.origins.allows("https://app.turnosqr.com"));
+}
+
+#[actix_rt::test]
+async fn browser_origins_are_managed_from_the_panel_without_a_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("origins.db");
+    let gateway = seeded_service;
+    let svc = gateway(PoolConfig::new(path.to_str().unwrap()).unwrap());
+    svc.load_origins().await;
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(svc.clone()))
+            .app_data(web::Data::new(
+                AdminState::new(Some("admin-token-random-at-least-32-bytes-long")).unwrap(),
+            ))
+            .configure(admin::routes)
+            .service(
+                web::scope("/v1")
+                    .wrap(origins::cors(svc.origins.clone()))
+                    .route(
+                        "/turn",
+                        web::post().to(|| async { actix_web::HttpResponse::Ok().finish() }),
+                    ),
+            ),
+    )
+    .await;
+    assert!(
+        browser_allowed!(&app, "https://app.turnosqr.com"),
+        "the deployed origin keeps working"
+    );
+    assert!(!browser_allowed!(&app, "https://tienda.example.com"));
+
+    let (session, token) = sign_in!(&app);
+    let edit = |kind: &'static str, origin: &'static str| {
+        test::TestRequest::post()
+            .uri("/admin/policy")
+            .cookie(session.clone())
+            .set_form([
+                ("csrf", token.clone()),
+                ("kind", kind.into()),
+                ("origin", origin.into()),
+            ])
+            .to_request()
+    };
+    let added = test::call_service(&app, edit("origin_add", " HTTPS://Tienda.Example.com/ ")).await;
+    assert_eq!(added.status(), StatusCode::SEE_OTHER);
+    assert!(
+        browser_allowed!(&app, "https://tienda.example.com"),
+        "an origin added in the panel works at once, written the way browsers send it"
+    );
+    assert!(
+        browser_allowed!(&app, "https://app.turnosqr.com"),
+        "adding one keeps the others"
+    );
+    let dashboard = test::call_service(
+        &app,
+        test::TestRequest::get()
+            .uri("/admin")
+            .cookie(session.clone())
+            .to_request(),
+    )
+    .await;
+    let body = String::from_utf8(test::read_body(dashboard).await.to_vec()).unwrap();
+    assert!(
+        body.contains("https://tienda.example.com") && body.contains("https://app.turnosqr.com")
+    );
+
+    let removed = test::call_service(&app, edit("origin_remove", "https://app.turnosqr.com")).await;
+    assert_eq!(removed.status(), StatusCode::SEE_OTHER);
+    assert!(
+        !browser_allowed!(&app, "https://app.turnosqr.com"),
+        "the panel's list wins over the environment value"
+    );
+
+    for bad in [
+        "https://tienda.example.com/checkout",
+        "https://tienda.example.com?x=1",
+        "http://evil.example.com",
+        "ftp://files.example.com",
+        "https://user:pass@example.com",
+        "not an origin",
+        "",
+    ] {
+        let refused = test::try_call_service(&app, edit("origin_add", bad)).await;
+        assert!(
+            refused.map_or(true, |r| r.status() == StatusCode::BAD_REQUEST),
+            "{bad:?} is not an exact origin"
+        );
+    }
+    assert!(
+        browser_allowed!(&app, "https://tienda.example.com"),
+        "a refused edit changes nothing"
+    );
+
+    let restarted = gateway(PoolConfig::new(path.to_str().unwrap()).unwrap());
+    restarted.load_origins().await;
+    assert_eq!(
+        restarted.effective_config().await.unwrap().origins,
+        vec!["https://tienda.example.com".to_owned()],
+        "the list survives a restart, and the environment does not bring back a removed origin"
+    );
 }

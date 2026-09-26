@@ -74,6 +74,7 @@ async fn http_exchange_init_infer_replay_and_revoke() {
         config,
         pool,
         provider: Arc::new(LocalProvider),
+        origins: asystant_gateway::origins::AllowedOrigins::default(),
     });
     let app = test::init_service(
         App::new()

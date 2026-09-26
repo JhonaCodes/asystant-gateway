@@ -4,6 +4,7 @@ pub mod config;
 pub mod error;
 pub mod handler;
 pub mod model;
+pub mod origins;
 pub mod prompt_policy;
 pub mod provider;
 pub mod repository;

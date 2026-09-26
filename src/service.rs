@@ -8,6 +8,7 @@ use crate::{
     config::{Config, ModelPolicy},
     error::AppError,
     model::{ExchangeOutput, Manifest, Session, TicketClaims, Turn},
+    origins::AllowedOrigins,
     provider::{InferenceProvider, ProviderClient},
     repository::{GatewayRepository, PoolConfig},
 };
@@ -17,8 +18,26 @@ pub struct GatewayService {
     pub config: Config,
     pub pool: PoolConfig,
     pub provider: Arc<dyn InferenceProvider>,
+    /// Origins the CORS layer allows, kept in step with the persisted policy.
+    pub origins: AllowedOrigins,
 }
 impl GatewayService {
+    /// Startup: the environment's origins first, then the saved policy's.
+    /// When the policy cannot be read yet (`--serve` before migrating) the
+    /// server keeps the environment's list instead of refusing to start;
+    /// readiness already reports the missing schema.
+    pub async fn load_origins(&self) {
+        self.origins.replace(self.config.origins.clone());
+        if self.refresh_origins().await.is_err() {
+            // Keep the environment's list; the next policy save refreshes it.
+        }
+    }
+    /// Reload the allowed origins from the effective policy, at startup and
+    /// after every administration change.
+    pub async fn refresh_origins(&self) -> Result<(), AppError> {
+        self.origins.replace(self.effective_config().await?.origins);
+        Ok(())
+    }
     /// Load persisted policy without ever replacing environment-owned credentials.
     pub async fn effective_config(&self) -> Result<Config, AppError> {
         let pool = self.pool.clone();

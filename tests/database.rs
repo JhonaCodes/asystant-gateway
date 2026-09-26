@@ -47,6 +47,7 @@ async fn durable_budgets_replay_rotation_and_revocation() {
         config,
         pool: pool.clone(),
         provider: Arc::new(ProviderClient::new().unwrap()),
+        origins: asystant_gateway::origins::AllowedOrigins::default(),
     };
     let now = Utc::now().timestamp();
     let mut claims = TicketClaims {

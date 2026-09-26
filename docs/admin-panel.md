@@ -51,6 +51,23 @@ daily tenant and daily user budgets. Customer policy overrides the tenant daily
 budget; the product's user budget and any more-specific user overrides remain
 in effect. Changes do not erase prior spending or reservations.
 
+## Allowed origins
+
+**Allowed origins** lists the websites and apps whose browsers may call the
+gateway's `/v1` API. Add as many as the products need (up to 64), for example
+`https://app.turnosqr.com` and a second domain; remove one with its button.
+Changes apply at once to new browser requests, without a restart.
+
+Enter an exact origin: scheme and host, with a port only if it is not the
+default. `HTTPS://App.Example.com/` is saved as `https://app.example.com`, the
+form browsers send. Paths, queries, fragments and credentials are refused, and
+plain `http` is only accepted for `localhost`, `127.0.0.1` and `[::1]`.
+
+`ASYSTANT_ORIGINS` is only the initial list. Until the panel saves a policy the
+gateway uses it; the first save stores that list together with the change, and
+from then on the panel's list is the one that counts, also after a restart. Once
+the origins are in the panel, the variable can be removed from Dokploy.
+
 ## Test a model
 
 Each product has a **Run paid connection test** action. It sends a fixed,

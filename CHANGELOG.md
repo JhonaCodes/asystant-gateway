@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Manage the browser origins allowed to call `/v1` from the admin panel: add
+  and remove several, applied without a restart and kept in the SQLite policy.
+  Origins are normalized and must be exact (no path, query or credentials;
+  plain http only for localhost). `ASYSTANT_ORIGINS` becomes the initial list
+  until the panel saves a policy.
+
 ## 0.2.0
 
 - Extract the gateway from JhonaCodes/asystant-ai into its own deployment repository.

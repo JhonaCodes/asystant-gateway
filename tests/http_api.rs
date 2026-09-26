@@ -5,7 +5,7 @@ use jsonwebtoken::{EncodingKey, Header, encode};
 use serde_json::{Value, json};
 use tokio::sync::mpsc::Sender;
 use uuid::Uuid;
-use asystant_gateway::{
+use asystant_api::{
     config::{Config, ModelConfig, Product, Provider},
     error::AppError,
     handler,
@@ -74,7 +74,7 @@ async fn http_exchange_init_infer_replay_and_revoke() {
         config,
         pool,
         provider: Arc::new(LocalProvider),
-        origins: asystant_gateway::origins::AllowedOrigins::default(),
+        origins: asystant_api::origins::AllowedOrigins::default(),
     });
     let app = test::init_service(
         App::new()
@@ -98,7 +98,7 @@ async fn http_exchange_init_infer_replay_and_revoke() {
     assert_eq!(contract["openapi"], "3.1.0");
     assert!(contract["paths"].get("/v1/turns").is_some());
     assert!(
-        serde_json::from_value::<asystant_gateway::model::ExchangeInput>(
+        serde_json::from_value::<asystant_api::model::ExchangeInput>(
             json!({"ticket":"example", "tenant":"forged"})
         )
         .is_err()
@@ -117,7 +117,7 @@ async fn http_exchange_init_infer_replay_and_revoke() {
         &Header::default(),
         &TicketClaims {
             iss: issuer,
-            aud: "asystant-gateway".into(),
+            aud: "asystant-api".into(),
             sub: "user".into(),
             tenant: "tenant".into(),
             sid: "session".into(),

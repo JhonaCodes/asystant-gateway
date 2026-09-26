@@ -1,6 +1,6 @@
 //! SQLite-specific durability, contention and atomic accounting contracts.
 use std::sync::{Arc, Barrier};
-use asystant_gateway::{
+use asystant_api::{
     error::AppError,
     model::{Manifest, Session},
     repository::{GatewayRepository, PoolConfig},

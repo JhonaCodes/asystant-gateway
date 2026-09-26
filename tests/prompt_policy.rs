@@ -1,4 +1,4 @@
-use asystant_gateway::prompt_policy::{SECURITY_PROMPT, instructions};
+use asystant_api::prompt_policy::{SECURITY_PROMPT, instructions};
 
 #[test]
 fn baseline_is_present_even_without_client_prompts() {

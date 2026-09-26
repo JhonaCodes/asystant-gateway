@@ -1,13 +1,13 @@
 # Deploy on Dokploy with SQLite
 
-Deploy one application from `JhonaCodes/asystant-gateway`, branch `main`.
+Deploy one application from `JhonaCodes/asystant-api`, branch `main`.
 Choose Dockerfile build, repository-root build context `.` and `Dockerfile`.
 The internal HTTP port is **8787**. There is no separate database service.
 
 ## Persistent storage and startup
 
 Before the first deployment, add a **named volume** mounted at `/data`, for
-example `asystant_gateway_data`. Keep the same volume for every deployment.
+example `asystant_api_data`. Keep the same volume for every deployment.
 The image prepares `/data` for UID/GID **10001:10001** and runs without root.
 A bind mount must be pre-created with that ownership. The entire directory must
 be writable: SQLite also creates WAL and shared-memory files next to the DB.
@@ -117,7 +117,7 @@ curl --fail http://127.0.0.1:8787/health/ready
 For a credential-free smoke test after building the image:
 
 ```sh
-docker build -t asystant-gateway:local .
+docker build -t asystant-api:local .
 python3 scripts/check_container.py
 ```
 
@@ -135,13 +135,13 @@ be authenticated with GHCR `write:packages` permission. The script securely pipe
 the existing GitHub token to Docker login; it never embeds that token or runtime
 secrets in the image. It checks the branch/worktree/remote revision, builds
 `linux/amd64` locally, and pushes both `:prod` and a full-commit-SHA tag to
-`ghcr.io/jhonacodes/asystant-gateway`. Use `TARGET_PLATFORM=linux/arm64` only if
+`ghcr.io/jhonacodes/asystant-api`. Use `TARGET_PLATFORM=linux/arm64` only if
 the Dokploy host uses ARM64, or `TARGET_PLATFORM=linux/amd64,linux/arm64` for both.
 
 In Dokploy change the application provider/source to **Docker image** and use:
 
 ```text
-ghcr.io/jhonacodes/asystant-gateway:prod
+ghcr.io/jhonacodes/asystant-api:prod
 ```
 
 Keep the existing environment, `/data` volume, HTTPS domain and port `8787`.

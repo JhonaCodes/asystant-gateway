@@ -643,7 +643,7 @@
           "ticket": {
             "type": "string",
             "maxLength": 8192,
-            "description": "Single-use HS256 JWT from the authenticated product backend; audience asystant-gateway, lifetime at most 120 seconds."
+            "description": "Single-use HS256 JWT from the authenticated product backend; audience asystant-api, lifetime at most 120 seconds."
           }
         },
         "required": [

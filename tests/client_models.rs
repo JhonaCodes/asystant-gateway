@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use asystant_gateway::{
+use asystant_api::{
     config::{Config, ModelConfig, Product},
     model::{Session, Manifest},
     repository::PoolConfig,
@@ -27,7 +27,7 @@ async fn client_assignment_overrides_requested_model_and_is_scoped_to_tenant() {
         config,
         pool,
         provider: Arc::new(ProviderClient::new().unwrap()),
-        origins: asystant_gateway::origins::AllowedOrigins::default(),
+        origins: asystant_api::origins::AllowedOrigins::default(),
     };
     let session = Session {
         token_hash: "unused".into(),
@@ -54,11 +54,11 @@ async fn client_assignment_overrides_requested_model_and_is_scoped_to_tenant() {
     let result = service
         .start_turn(
             session,
-            asystant_gateway::model::Turn {
+            asystant_api::model::Turn {
                 registration_id: registration,
                 request_id: "forged-model".into(),
                 model: "small".into(),
-                messages: vec![asystant_gateway::model::Message {
+                messages: vec![asystant_api::model::Message {
                     role: "user".into(),
                     content: "Hi".into(),
                     calls: vec![],
@@ -69,7 +69,7 @@ async fn client_assignment_overrides_requested_model_and_is_scoped_to_tenant() {
         .await;
     assert!(matches!(
         result,
-        Err(asystant_gateway::error::AppError::Invalid)
+        Err(asystant_api::error::AppError::Invalid)
     ));
 }
 

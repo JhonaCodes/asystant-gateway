@@ -70,7 +70,7 @@ impl GatewayService {
             .find_map(|product| {
                 let mut validation = Validation::new(Algorithm::HS256);
                 validation.leeway = 0;
-                validation.set_audience(&["asystant-gateway"]);
+                validation.set_audience(&["asystant-api"]);
                 validation.set_issuer(&[&product.issuer]);
                 decode::<TicketClaims>(
                     ticket,

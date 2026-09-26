@@ -217,7 +217,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "asystant_gateway"
+name = "asystant_api"
 version = "0.2.0"
 dependencies = [
  "actix-cors",

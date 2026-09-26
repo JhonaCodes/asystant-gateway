@@ -3,7 +3,7 @@ use actix_web::{
     App, HttpServer, web,
     middleware::{DefaultHeaders, from_fn},
 };
-use asystant_gateway::{
+use asystant_api::{
     admission::{self, Admission},
     config::Config,
     handler,
@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
         && mode != "--migrate-only"
         && mode != "--serve"
     {
-        anyhow::bail!("usage: asystant_gateway [--migrate-only | --serve]");
+        anyhow::bail!("usage: asystant_api [--migrate-only | --serve]");
     }
     let database_path = env::var("DATABASE_PATH").unwrap_or_else(|_| "asystant.db".into());
     if mode.as_deref() == Some("--migrate-only") {
@@ -45,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
         origins: AllowedOrigins::default(),
     });
     service.load_origins().await;
-    let admin = web::Data::new(asystant_gateway::admin::AdminState::new(
+    let admin = web::Data::new(asystant_api::admin::AdminState::new(
         env::var("ASYSTANT_ADMIN_TOKEN").ok().as_deref(),
     )?);
     let admission = web::Data::new(Admission::default());
@@ -67,12 +67,12 @@ async fn main() -> anyhow::Result<()> {
             .app_data(
                 web::JsonConfig::default()
                     .limit(262144)
-                    .error_handler(|_, _| asystant_gateway::error::AppError::Invalid.into()),
+                    .error_handler(|_, _| asystant_api::error::AppError::Invalid.into()),
             )
             .app_data(web::Data::new(Arc::clone(&service)))
             .service(web::scope("/v1").wrap(cors).configure(handler::api_routes))
             .configure(handler::public_routes)
-            .configure(asystant_gateway::admin::routes)
+            .configure(asystant_api::admin::routes)
     })
     .shutdown_timeout(130)
     .bind(env::var("ASYSTANT_BIND").unwrap_or_else(|_| "127.0.0.1:8787".into()))?

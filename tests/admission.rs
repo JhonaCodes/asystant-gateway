@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr};
 use actix_web::{App, http::StatusCode, middleware::from_fn, test, web};
-use asystant_gateway::{
+use asystant_api::{
     admission::{self, Admission},
     error::AppError,
 };

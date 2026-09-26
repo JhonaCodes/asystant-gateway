@@ -1,6 +1,6 @@
 use chrono::Utc;
 use serde_json::json;
-use asystant_gateway::{
+use asystant_api::{
     config::{ModelConfig, Provider},
     model::{Manifest, Message, TicketClaims, ToolCall, Turn},
     provider::ProviderClient,
@@ -78,7 +78,7 @@ fn tickets_are_short_lived_and_identity_is_unambiguous() {
     let now = Utc::now().timestamp();
     let mut c = TicketClaims {
         iss: "product".into(),
-        aud: "asystant-gateway".into(),
+        aud: "asystant-api".into(),
         sub: "a/b".into(),
         tenant: "c".into(),
         sid: "s".into(),

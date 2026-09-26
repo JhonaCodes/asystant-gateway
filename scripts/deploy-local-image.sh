@@ -2,8 +2,8 @@
 # Build locally and publish; Dokploy pulls the image without compiling Rust.
 set -euo pipefail
 
-IMAGE_REPOSITORY="ghcr.io/jhonacodes/asystant-gateway"
-SOURCE_REPOSITORY="https://github.com/JhonaCodes/asystant-gateway"
+IMAGE_REPOSITORY="ghcr.io/jhonacodes/asystant-api"
+SOURCE_REPOSITORY="https://github.com/JhonaCodes/asystant-api"
 TARGET_PLATFORM="${TARGET_PLATFORM:-linux/amd64}"
 
 if [[ "${1:-}" == "--help" ]]; then
@@ -11,8 +11,8 @@ if [[ "${1:-}" == "--help" ]]; then
 Usage: ./scripts/deploy-local-image.sh
 
 Build and publish the current synchronized main commit to GHCR as:
-  ghcr.io/jhonacodes/asystant-gateway:<full-commit-sha>
-  ghcr.io/jhonacodes/asystant-gateway:prod
+  ghcr.io/jhonacodes/asystant-api:<full-commit-sha>
+  ghcr.io/jhonacodes/asystant-api:prod
 
 Requires Docker with Buildx and gh authenticated with write:packages access.
 Default target: linux/amd64. Override TARGET_PLATFORM for another server platform.

@@ -1,7 +1,7 @@
 services:
   api:
     build: .
-    image: asystant-gateway:local
+    image: asystant-api:local
     env_file: .env
     environment:
       DATABASE_PATH: /data/asystant.db

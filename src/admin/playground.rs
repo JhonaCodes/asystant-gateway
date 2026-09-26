@@ -21,7 +21,7 @@ pub async fn run(service: Arc<GatewayService>, issuer: &str) -> Result<String, A
     let now = Utc::now().timestamp();
     let claims = TicketClaims {
         iss: issuer.into(),
-        aud: "asystant-gateway".into(),
+        aud: "asystant-api".into(),
         sub: "admin-playground".into(),
         tenant: "__admin_playground__".into(),
         sid: "admin-playground".into(),

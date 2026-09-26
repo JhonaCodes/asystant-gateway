@@ -32,5 +32,5 @@ jobs:
           /tmp/asystant-openapi/bin/python -c "import json; from openapi_spec_validator import validate; validate(json.load(open('openapi.yaml')))"
       - name: Verify persistent container
         run: |
-          docker build -t asystant-gateway:local .
+          docker build -t asystant-api:local .
           python3 scripts/check_container.py

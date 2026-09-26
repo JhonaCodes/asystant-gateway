@@ -39,7 +39,7 @@ def main():
     def start(*mode):
         run("docker", "run", "-d", "--name", api, "--read-only", "--cap-drop=ALL",
             "--security-opt=no-new-privileges:true", "-v", f"{volume}:/data",
-            *env_args, "asystant-gateway:local", *mode)
+            *env_args, "asystant-api:local", *mode)
         wait_for(lambda: status("live") == "200", "liveness")
 
     try:

@@ -7,7 +7,7 @@ A product-independent Rust/Actix API with SQLite/Diesel persistence. Use it dire
 Supply the environment variables in [.env.example](.env.example). The binary reads process environment variables; it does not automatically load a dotenv file.
 
 ```sh
-cargo run --bin asystant_gateway
+cargo run --bin asystant_api
 ```
 
 Startup applies embedded migrations before listening. Run one replica with a persistent local volume; no PostgreSQL service is needed. `--migrate-only` and `--serve` remain available for manual operations. The default listener is `127.0.0.1:8787`; the container listens on `0.0.0.0:8787`. See [deployment](docs/deployment.md).
@@ -21,7 +21,7 @@ Register each product with an issuer and an independent random secret of at leas
 ```json
 {
   "iss": "my-product",
-  "aud": "asystant-gateway",
+  "aud": "asystant-api",
   "sub": "user-id",
   "tenant": "customer-id",
   "sid": "stable-login-id",

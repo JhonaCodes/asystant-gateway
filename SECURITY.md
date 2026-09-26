@@ -8,7 +8,7 @@ The gateway should be reachable over public HTTPS **only behind a controlled ing
 
 ## Reporting
 
-Report vulnerabilities privately through [GitHub private vulnerability reporting](https://github.com/JhonaCodes/asystant-gateway/security/advisories/new). Do not post credentials, customer data or an exploit containing secrets in a public issue. Include the affected version, reproduction steps and expected impact. Version 0.2.x is the currently maintained line.
+Report vulnerabilities privately through [GitHub private vulnerability reporting](https://github.com/JhonaCodes/asystant-api/security/advisories/new). Do not post credentials, customer data or an exploit containing secrets in a public issue. Include the affected version, reproduction steps and expected impact. Version 0.2.x is the currently maintained line.
 
 ## Trust boundaries and controls
 

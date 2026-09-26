@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use actix_web::{App, http::StatusCode, test, web};
-use asystant_gateway::{
+use asystant_api::{
     admin::{self, AdminState, model::EditPolicy, repository::update_policy},
     config::{Config, ModelConfig, Product, Provider},
     origins::{self, AllowedOrigins},
@@ -15,14 +15,14 @@ impl InferenceProvider for LocalProvider {
     async fn complete(
         &self,
         _: &ModelConfig,
-        manifest: &asystant_gateway::model::Manifest,
-        _: &[asystant_gateway::model::Message],
+        manifest: &asystant_api::model::Manifest,
+        _: &[asystant_api::model::Message],
         _: &str,
         _: &tokio::sync::mpsc::Sender<Result<web::Bytes, actix_web::Error>>,
-    ) -> Result<(asystant_gateway::model::Message, i64), asystant_gateway::error::AppError> {
+    ) -> Result<(asystant_api::model::Message, i64), asystant_api::error::AppError> {
         assert!(manifest.tools.is_empty());
         Ok((
-            asystant_gateway::model::Message {
+            asystant_api::model::Message {
                 role: "assistant".into(),
                 content: "Connection successful.".into(),
                 calls: vec![],
@@ -322,7 +322,7 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
     let dir = tempfile::tempdir().unwrap();
     let pool = PoolConfig::new(dir.path().join("admin.db").to_str().unwrap()).unwrap();
     let svc = service(pool.clone());
-    let session = asystant_gateway::model::Session {
+    let session = asystant_api::model::Session {
         token_hash: "test".into(),
         identity: "stable-test".into(),
         sid: "sid".into(),
@@ -334,7 +334,7 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
     let (id, _) = svc
         .register(
             session.clone(),
-            asystant_gateway::model::Manifest {
+            asystant_api::model::Manifest {
                 tools: vec![],
                 prompts: vec![],
                 models: vec![],
@@ -342,11 +342,11 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
         )
         .await
         .unwrap();
-    let turn = asystant_gateway::model::Turn {
+    let turn = asystant_api::model::Turn {
         registration_id: id,
         request_id: "unique".into(),
         model: "model-a".into(),
-        messages: vec![asystant_gateway::model::Message {
+        messages: vec![asystant_api::model::Message {
             role: "user".into(),
             content: "hello".into(),
             calls: vec![],
@@ -368,7 +368,7 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
     update_policy(&pool, config(), &edit).unwrap();
     assert!(matches!(
         svc.clone().start_turn(session.clone(), turn.clone()).await,
-        Err(asystant_gateway::error::AppError::InputLimit { .. })
+        Err(asystant_api::error::AppError::InputLimit { .. })
     ));
     edit.max_input_tokens = 65536;
     update_policy(&pool, config(), &edit).unwrap();
@@ -386,7 +386,7 @@ async fn persisted_limits_are_enforced_on_existing_registrations() {
     update_policy(&pool, config(), &edit).unwrap();
     assert!(matches!(
         svc.start_turn(session, turn).await,
-        Err(asystant_gateway::error::AppError::Invalid)
+        Err(asystant_api::error::AppError::Invalid)
     ));
 }
 

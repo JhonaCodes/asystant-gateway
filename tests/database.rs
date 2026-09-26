@@ -2,7 +2,7 @@ use std::sync::{Arc, Barrier};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use uuid::Uuid;
-use asystant_gateway::{
+use asystant_api::{
     config::{Config, ModelConfig, Product, Provider},
     model::{Session, TicketClaims},
     provider::ProviderClient,
@@ -47,12 +47,12 @@ async fn durable_budgets_replay_rotation_and_revocation() {
         config,
         pool: pool.clone(),
         provider: Arc::new(ProviderClient::new().unwrap()),
-        origins: asystant_gateway::origins::AllowedOrigins::default(),
+        origins: asystant_api::origins::AllowedOrigins::default(),
     };
     let now = Utc::now().timestamp();
     let mut claims = TicketClaims {
         iss: identity.clone(),
-        aud: "asystant-gateway".into(),
+        aud: "asystant-api".into(),
         sub: "user".into(),
         tenant: "tenant".into(),
         sid: "session".into(),
